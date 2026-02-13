@@ -36,6 +36,8 @@ set_ser_in_1:
 
 end:
     ; put code here to generate SRCLK pulse
+    cbi PORTB, 2 ; Clear SRCLK pin (assuming SRCLK is connected to PB2)
+    sbi PORTB, 2 ; Set SRCLK pin (assuming SRCLK is connected to PB2)
     
     dec R17
     brne loop ; branch to loop if R17 is not zero
