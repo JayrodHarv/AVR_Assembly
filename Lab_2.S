@@ -58,7 +58,6 @@ input:
 
     ; TODO: implement logic to modify R16 based on user input (e.g., increment/decrement character index)
 
-    ldi R16, 0 ; Initially, load index for character '0'
     add ZL, R16 ; Move to the correct position in the table
     ld R16, Z ; Load the character pattern into R16
 
