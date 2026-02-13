@@ -60,6 +60,8 @@ input:
     add ZL, R16 ; Move to the correct position in the table
     ld R16, Z ; Load the character pattern into R16
 
+    ret
+
 main:
     rcall input ; Call the input function to get user input
     rcall display ; Call the display function to show the character
