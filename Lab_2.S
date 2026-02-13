@@ -79,3 +79,5 @@ start:
     ld R16, Z ; Load the character pattern into R16
 
     rjmp main ; jump to main loop
+
+.exit
