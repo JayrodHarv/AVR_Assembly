@@ -64,8 +64,8 @@ input:
 
     ; TODO: implement logic to modify R16 based on user input (e.g., increment/decrement character index)
 
-	ldi ZH, high(seg_hex_table<<1)
-    ldi ZL, low(seg_hex_table<<1)
+	ldi ZH, high(seg_hex_table)
+    ldi ZL, low(seg_hex_table)
 
     ldi R16, 0        ; index
     add ZL, R16
@@ -80,7 +80,7 @@ main:
     rjmp main ; jump to main loop
 
 delay:
-    ldi r18, 85        ; outer loop
+    ldi r21, 85        ; outer loop
 L1:
     ldi r19, 255
 L2:
@@ -92,18 +92,16 @@ L3:
     dec r19
     brne L2
 
-    dec r18
+    dec r21
     brne L1
 
     ret
 
 test:
-    ldi ZH, high(seg_hex_table<<1)
-    ldi ZL, low(seg_hex_table<<1)
+	ldi ZH, high(seg_hex_table<<1)
+	ldi ZL, low(seg_hex_table<<1)
 
-    inc R16 ; increment index to get next character
-
-	add ZL, R16 ; Move to the correct position in the table
+	add ZL, R18 ; Move to the correct position in the table
     lpm R16, Z ; Load the character pattern into R16
 	rcall display ; show digit
     rcall delay ; wait
@@ -114,6 +112,16 @@ test:
 
     clr r18            ; restart at 0
     rjmp test
+
+test_char:
+	ldi R16, 15 ; Initially, load index for character '0'
+    add ZL, R16 ; Move to the correct position in the table
+    lpm R16, Z ; Load the character pattern into R16
+
+	rcall display
+
+forever:
+	rjmp forever
 
 ; Start of main program (initialize registers, call display function, etc.)
 start:
