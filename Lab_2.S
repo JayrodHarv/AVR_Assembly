@@ -98,6 +98,11 @@ L3:
     ret
 
 test:
+    ldi ZH, high(seg_hex_table<<1)
+    ldi ZL, low(seg_hex_table<<1)
+
+    inc R16 ; increment index to get next character
+
 	add ZL, R16 ; Move to the correct position in the table
     lpm R16, Z ; Load the character pattern into R16
 	rcall display ; show digit
