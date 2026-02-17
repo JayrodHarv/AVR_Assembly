@@ -3,9 +3,13 @@
 .org 0
 
 ; Configure PB0, PB1, PB2 as output pins.
-sbi   DDRB,0      ; PB0 is now output
-sbi   DDRB,1      ; PB1 is now output
-sbi   DDRB,2      ; PB2 is now output
+sbi DDRB, 0 ; Set PB0 to output (Serial Input to Shift Register)
+sbi DDRB, 1 ; Set PB1 to output (Right Shift Clock)
+sbi DDRB, 2 ; Set PB2 to output (Shift Register Clock)
+
+cbi DDRB, 3 ; Set PB3 to input (Button)
+
+sbi PORTB, 2 ; enable pull-up resistor
 
 ; Lookup table for 7-segment display characters (0-9, A-F)
 seg_hex_table:
@@ -64,14 +68,21 @@ input:
 
     ; TODO: implement logic to modify R16 based on user input (e.g., increment/decrement character index)
 
-	ldi ZH, high(seg_hex_table)
-    ldi ZL, low(seg_hex_table)
+	ldi ZH, high(seg_hex_table<<1)
+    ldi ZL, low(seg_hex_table<<1)
 
-    ldi R16, 0        ; index
-    add ZL, R16
-    adc ZH, R1
+	in r17, PIND ; read in input from button
+	sbrs r17, 2  ; skip next if bit 2 is set (not pressed)
+	inc r18 ; increment r18
 
-    lpm R16, Z
+	cpi  r18,16 ; compare r18 & 16 (r18 - 16)
+	brlo ok ; bypass clear if index in bounds
+	clr  r18 ; reset to zero if overflow
+ok:
+
+    add ZL, R18 ; Move to the correct position in the table
+    lpm R16, Z ; Load the character pattern into R16
+
     ret
 
 main:
@@ -108,9 +119,9 @@ test:
 
     inc r18 ; next hex digit
     cpi r18, 16 ; compare r18 value to 16
-    brlo test ; branch to test if value to low
+    brlo test ; branch to test if value less than 16
 
-    clr r18            ; restart at 0
+    clr r18 ; restart at 0
     rjmp test
 
 test_char:
@@ -142,6 +153,6 @@ start:
     add ZL, R16 ; Move to the correct position in the table
     lpm R16, Z ; Load the character pattern into R16
 
-    rjmp test ; jump to main loop
+    rjmp main ; jump to main loop
 
 .exit
