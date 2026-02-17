@@ -71,8 +71,8 @@ input:
 	ldi ZH, high(seg_hex_table<<1)
     ldi ZL, low(seg_hex_table<<1)
 
-	in r17, PIND ; read in input from button
-	sbrs r17, 2  ; skip next if bit 2 is set (not pressed)
+	in r17, PINB ; read in input from button
+	sbrs r17, 3  ; skip next if bit 2 is set (not pressed)
 	inc r18 ; increment r18
 
 	cpi  r18,16 ; compare r18 & 16 (r18 - 16)
