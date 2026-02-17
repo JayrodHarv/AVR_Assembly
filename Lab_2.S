@@ -9,7 +9,7 @@ sbi DDRB, 2 ; Set PB2 to output (Shift Register Clock)
 
 cbi DDRB, 3 ; Set PB3 to input (Button)
 
-sbi PORTB, 2 ; enable pull-up resistor
+sbi PORTB, 3 ; enable pull-up resistor
 
 ; Lookup table for 7-segment display characters (0-9, A-F)
 seg_hex_table:
