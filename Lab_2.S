@@ -26,13 +26,13 @@ display:
     ; backup used registers on stack
     push R16
     push R17
-    in R17, SREG
+    in R17, SREG ; backup status register
     push R17
 
     ldi R17, 8 ; send 8 bits serially to shift register
 
 loop:
-    ror R16 ; rotate right through Carry
+    ror R16 ; rotate right through Carry (Least Significant Bit goes into Carry)
     BRCS set_ser_in_1 ; branch if Carry is set
 
     ; put code here to set SER to 0
@@ -49,7 +49,7 @@ end:
     sbi PORTB, 2 ; Set SRCLK pin (assuming SRCLK is connected to PB2)
     cbi PORTB, 2 ; Clear SRCLK pin (assuming SRCLK is connected to PB2)
     
-    dec R17
+    dec R17 ; decrement bit counter
     brne loop ; branch to loop if R17 is not zero
 
 	; put code here to generate RCLK pulse (triggers right shift)
@@ -58,7 +58,7 @@ end:
     
     ; restore registers from stack
     pop R17
-    out SREG, R17
+    out SREG, R17 ; restore status register
     pop R17
     pop R16
     ret
