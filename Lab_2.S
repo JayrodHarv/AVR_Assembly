@@ -9,7 +9,12 @@ sbi DDRB, 2 ; Set PB2 to output (Shift Register Clock)
 
 cbi DDRB, 3 ; Set PB3 to input (Button)
 
-sbi PORTB, 3 ; enable pull-up resistor
+sbi PORTB, 3    ; enable pull-up resistor
+
+; R18 -> index of character in lookup table
+; R16 -> Character value to send to display subroutine
+; R17 -> General use register
+; R0 -> Contents are always zero
 
 ; Lookup table for 7-segment display characters (0-9, A-F)
 seg_hex_table:
@@ -63,30 +68,53 @@ end:
     pop R16
     ret
 
-input:
-    ; Implement input function to read user input (e.g., from buttons or serial)
-
-    ; TODO: implement logic to modify R16 based on user input (e.g., increment/decrement character index)
-
-	ldi ZH, high(seg_hex_table<<1)
-    ldi ZL, low(seg_hex_table<<1)
-
-	in r17, PINB ; read in input from button
-	sbrs r17, 3  ; skip next if bit 2 is set (not pressed)
+button_pressed:
 	inc r18 ; increment r18
+	ret
+
+	; Implement input function to read user input (e.g., from buttons or serial)
+input:
+	; Save contents of registers
+	push R17
+
+	clr R17 ; clear register for debugging purposes
+    
+	in r17, PINB ; read in input from button
+	sbrs r17, 3  ; skip next if bit 3 is set (not pressed)
+	rcall button_pressed ; jump to button press subroutine
 
 	cpi  r18,16 ; compare r18 & 16 (r18 - 16)
 	brlo ok ; bypass clear if index in bounds
 	clr  r18 ; reset to zero if overflow
 ok:
 
-    add ZL, R18 ; Move to the correct position in the table
-    lpm R16, Z ; Load the character pattern into R16
+	; restore contents of registers
+	pop R17
+    ret
 
+load_char:
+	; Save contents of Z pointer
+	push R30
+	push R31
+
+	; Z = start of lookup table
+	ldi ZH, high(seg_hex_table<<1)
+    ldi ZL, low(seg_hex_table<<1)
+
+	add ZL, R18 ; Add R18 index to the Z pointer
+
+	adc ZH, R0 ; Handle 16-bit carry
+
+	lpm R16, Z ; Load char value into R16
+
+	; restore contents of Z pointer to lookup table
+	pop r31
+    pop r30
     ret
 
 main:
     rcall input ; Call the input function to get user input
+	rcall load_char ; Load char value from lookup table at R18 into R16 to send to display
     rcall display ; Call the display function to show the character
     rjmp main ; jump to main loop
 
@@ -136,10 +164,6 @@ forever:
 
 ; Start of main program (initialize registers, call display function, etc.)
 start:
-	; PB0 = SER
-    ; PB1 = RCLK
-    ; PB2 = SRCLK
-
 	; Initialize the stack
 	ldi r16, high(RAMEND)
 	out SPH, r16
