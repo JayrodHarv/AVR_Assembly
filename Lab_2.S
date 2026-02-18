@@ -11,10 +11,17 @@ cbi DDRB, 3 ; Set PB3 to input (Button)
 
 sbi PORTB, 3    ; enable pull-up resistor
 
+; R20 -> mode (increment/decrement)
+; R19 -> Button hold time counter
 ; R18 -> index of character in lookup table
 ; R16 -> Character value to send to display subroutine
 ; R17 -> General use register
 ; R0 -> Contents are always zero
+; R21:R20 -> 16-bit counter for waiting for button release
+
+; Constants
+.equ ONE_SECOND = 200 ; Interations for approximately 1 second delay (assuming 16 MHz clock)
+.equ TWO_SECONDS = 400 ; Interations for approximately 2 seconds delay (assuming 16 MHz clock)
 
 ; Lookup table for 7-segment display characters (0-9, A-F)
 seg_hex_table:
@@ -70,7 +77,6 @@ end:
 
 ; Implement input function to read user input
 input:
-
     ; Check if button is pressed (active low)
     sbic PINB, 3 ; skip if bit clear (pressed)
     ret ; return to main loop if button is not pressed
@@ -87,15 +93,29 @@ input:
 
     ; Wrap around if index exceeds 15 (for hex digits 0-F)
     cpi r18, 16 ; compare r18 value to 16
+    clr r19 ; reset button hold time counter
     brlo wait_release ; branch to wait_release if value less than 16
     clr r18 ; reset index to 0 if it exceeds 15
 
 ; Wait for button release (active low)
 wait_release:
     sbis PINB, 3 ; skip if released
-    rjmp wait_release ; wait until button is released
+    rjmp button_held ; wait until button is released
+    
     rcall delay_5ms ; release debounce
     ret ; return to main loop once button is released
+
+; If the button is held down, increment the hold time counter until the button is released
+button_held:
+    rcall delay_5ms     ; time base = 5 ms
+
+    ; increment 16-bit counter
+    inc r20
+    brne no_carry
+    inc r21
+
+no_carry:
+    rjmp wait_release
 
 ; delay function for approximately 5 milliseconds (assuming 16 MHz clock)
 delay_5ms:
@@ -114,10 +134,6 @@ load_char:
 	push R30
 	push R31
 
-	; Z = start of lookup table
-	ldi ZH, high(seg_hex_table<<1)
-    ldi ZL, low(seg_hex_table<<1)
-
 	add ZL, R18 ; Add R18 index to the Z pointer
 	clr R0 ; make sure that R0 is zero
 	adc ZH, R0 ; Handle 16-bit carry
@@ -129,55 +145,37 @@ load_char:
     pop r30
     ret
 
-main:
-    rcall input ; Call the input function to get user input
-	rcall load_char ; Load char value from lookup table at R18 into R16 to send to display
-    rcall display ; Call the display function to show the character
-    rjmp main ; jump to main loop
+check_hold_time:
+    ; store registers that will be used in this function
+    push R20
+    push R21
+    push R19
+    push R18
 
-delay:
-    ldi r21, 85        ; outer loop
-L1:
-    ldi r19, 255
-L2:
-    ldi r20, 255
-L3:
-    dec r20
-    brne L3
+    ldi R19, high(ONE_SECOND) ; Load high byte of ONE_SECOND into R19
+    ldi R20, low(ONE_SECOND)  ; Load low byte of ONE_SECOND into R20
 
-    dec r19
-    brne L2
+    ; Check if button is held for 1 second
+    cp R21, R19 ; Compare high byte of counter to high byte of ONE_SECOND
+    cpc R20, R20 ; Compare low byte of counter to low byte of ONE_SECOND
 
-    dec r21
-    brne L1
-
+    ; restore registers before returning to main loop
+    pop R19
+    pop R21
+    pop R20
     ret
 
-test:
-	ldi ZH, high(seg_hex_table<<1)
-	ldi ZL, low(seg_hex_table<<1)
+main:
+    rcall input ; Call the input function to get user input
 
-	add ZL, R18 ; Move to the correct position in the table
-    lpm R16, Z ; Load the character pattern into R16
-	rcall display ; show digit
-    rcall delay ; wait
+    rcall check_hold_time ; Check if the button is held down for 1 or 2 seconds and update index accordingly
 
-    inc r18 ; next hex digit
-    cpi r18, 16 ; compare r18 value to 16
-    brlo test ; branch to test if value less than 16
+	rcall load_char ; Load char value from lookup table at R18 into R16 to send to display
 
-    clr r18 ; restart at 0
-    rjmp test
+    ; ori R16, 0x80 ; enable decimal point
 
-test_char:
-	ldi R16, 15 ; Initially, load index for character '0'
-    add ZL, R16 ; Move to the correct position in the table
-    lpm R16, Z ; Load the character pattern into R16
-
-	rcall display
-
-forever:
-	rjmp forever
+    rcall display ; Call the display function to show the character
+    rjmp main ; jump to main loop
 
 ; Start of main program (initialize registers, call display function, etc.)
 start:
