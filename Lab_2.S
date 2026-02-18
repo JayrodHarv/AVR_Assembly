@@ -68,28 +68,45 @@ end:
     pop R16
     ret
 
-button_pressed:
-	inc r18 ; increment r18
-	ret
-
-	; Implement input function to read user input (e.g., from buttons or serial)
+; Implement input function to read user input
 input:
-	; Save contents of registers
-	push R17
 
-	clr R17 ; clear register for debugging purposes
-    
-	in r17, PINB ; read in input from button
-	sbrs r17, 3  ; skip next if bit 3 is set (not pressed)
-	rcall button_pressed ; jump to button press subroutine
+    ; Check if button is pressed (active low)
+    sbic PINB, 3 ; skip if bit clear (pressed)
+    ret ; return to main loop if button is not pressed
 
-	cpi  r18,16 ; compare r18 & 16 (r18 - 16)
-	brlo ok ; bypass clear if index in bounds
-	clr  r18 ; reset to zero if overflow
-ok:
+    ; Debounce delay
+    rcall delay_5ms
 
-	; restore contents of registers
-	pop R17
+    ; Check if button is still pressed after debounce delay
+    sbic PINB, 3
+    ret ; returns if button is not pressed (false trigger)
+
+    ; If we reach here, the button is confirmed as pressed
+    inc r18 ; increment index
+
+    ; Wrap around if index exceeds 15 (for hex digits 0-F)
+    cpi r18, 16 ; compare r18 value to 16
+    brlo wait_release ; branch to wait_release if value less than 16
+    clr r18 ; reset index to 0 if it exceeds 15
+
+; Wait for button release (active low)
+wait_release:
+    sbis PINB, 3 ; skip if released
+    rjmp wait_release ; wait until button is released
+    rcall delay_5ms ; release debounce
+    ret ; return to main loop once button is released
+
+; delay function for approximately 5 milliseconds (assuming 16 MHz clock)
+delay_5ms:
+    ldi r20, 60
+d1:
+    ldi r21, 200
+d2:
+    dec r21
+    brne d2
+    dec r20
+    brne d1
     ret
 
 load_char:
@@ -102,7 +119,7 @@ load_char:
     ldi ZL, low(seg_hex_table<<1)
 
 	add ZL, R18 ; Add R18 index to the Z pointer
-
+	clr R0 ; make sure that R0 is zero
 	adc ZH, R0 ; Handle 16-bit carry
 
 	lpm R16, Z ; Load char value into R16
