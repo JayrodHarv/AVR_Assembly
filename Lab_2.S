@@ -150,14 +150,14 @@ short_press:
     sbrc R20,7 ; Check mode bit (bit 7 of R20)
     rjmp dec_mode ; if mode bit is set, jump to decrement mode
 
-; increment
+    ; increment
     inc R18
-    andi R18, 0x0F ; wrap 0–>15 automatically
+    andi R18, 0x0F ; wrap 0–>F automatically
     ret
 
 dec_mode:
     dec R18
-    andi R18, 0x0F ; wrap 15->0 automatically
+    andi R18, 0x0F ; wrap F->0 automatically
     ret
 
 medium_press:
@@ -168,13 +168,13 @@ medium_press:
 
 check_hold_time:
     ; store registers that will be used in this function
-    push R25
-    push R24
-    push R23
     push R22
-
+    push R23
+    push R24
+    push R25
+    
     ; Check if button is held for less than 1 second
-    ldi R22, low(ONE_SECOND)  ; Load low byte of ONE_SECOND into R22
+    ldi R22, low(ONE_SECOND) ; Load low byte of ONE_SECOND into R22
     ldi R23, high(ONE_SECOND) ; Load high byte of ONE_SECOND into R23
 
     cp R24, R22 ; Compare low byte of counter to low byte of ONE_SECOND
@@ -182,7 +182,7 @@ check_hold_time:
     brlo short_case ; If counter is less than ONE_SECOND, it's a short press
 
     ; Check if button is held for 1 second or more but less than 2 seconds
-    ldi R22, low(TWO_SECONDS)  ; Load low byte of TWO_SECONDS into R22
+    ldi R22, low(TWO_SECONDS) ; Load low byte of TWO_SECONDS into R22
     ldi R23, high(TWO_SECONDS) ; Load high byte of TWO_SECONDS into R23
     cp R24, R22 ; Compare low byte of counter to low byte of TWO_SECONDS
     cpc R25, R23 ; Compare high byte of counter to high byte of TWO_SECONDS
@@ -200,14 +200,15 @@ short_case:
 medium_case:
     rcall medium_press
 
-    ; restore registers before returning to main loop
+; restore registers before returning to main loop
 exit_check:
-    pop R22
-    pop R23
-    pop R24
     pop R25
+    pop R24
+    pop R23
+    pop R22
     ret
 
+; main loop to continuously check for button presses and update display
 main:
     rcall input ; Call the input function to get user input
 	rcall load_char ; Load char value from lookup table at R18 into R16 to send to display
