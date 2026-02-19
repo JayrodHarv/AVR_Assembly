@@ -2,26 +2,29 @@
 .cseg
 .org 0
 
+; Constants
+.equ SERL = 0 ; Assuming SER is connected to PB0
+.equ RCLK = 1 ; Assuming RCLK is connected to PB1
+.equ SRCLK = 2 ; Assuming SRCLK is connected to PB2
+.equ BTN = 3 ; Assuming button is connected to PB3
+.equ ONE_SECOND = 200 ; Interations for approximately 1 second delay (assuming 16 MHz clock)
+.equ TWO_SECONDS = 400 ; Interations for approximately 2 seconds delay (assuming 16 MHz clock)
+
 ; Configure PB0, PB1, PB2 as output pins.
-sbi DDRB, 0 ; Set PB0 to output (Serial Input to Shift Register)
-sbi DDRB, 1 ; Set PB1 to output (Right Shift Clock)
-sbi DDRB, 2 ; Set PB2 to output (Shift Register Clock)
+sbi DDRB, SERL ; Set PB0 to output (Serial Input to Shift Register)
+sbi DDRB, RCLK ; Set PB1 to output (Right Shift Clock)
+sbi DDRB, SRCLK ; Set PB2 to output (Shift Register Clock)
 
-cbi DDRB, 3 ; Set PB3 to input (Button)
+cbi DDRB, BTN ; Set PB3 to input (Button)
+sbi PORTB, BTN ; enable internal pull-up resistor
 
-sbi PORTB, 3 ; enable pull-up resistor
-
-; R24 -> mode (increment/decrement)
+; R25:R24 -> 16-bit counter for waiting for button release
+; R20 -> mode (increment/decrement)
 ; R19 -> Button hold time counter
 ; R18 -> index of character in lookup table
 ; R16 -> Character value to send to display subroutine
 ; R17 -> General use register
 ; R0 -> Contents are always zero
-; R21:R20 -> 16-bit counter for waiting for button release
-
-; Constants
-.equ ONE_SECOND = 200 ; Interations for approximately 1 second delay (assuming 16 MHz clock)
-.equ TWO_SECONDS = 400 ; Interations for approximately 2 seconds delay (assuming 16 MHz clock)
 
 ; Lookup table for 7-segment display characters (0-9, A-F)
 seg_hex_table:
@@ -46,27 +49,23 @@ display:
 loop:
     ror R16 ; rotate right through Carry (Least Significant Bit goes into Carry)
     BRCS set_ser_in_1 ; branch if Carry is set
-
-    ; put code here to set SER to 0
-    cbi PORTB, 0 ; Clear SER pin (assuming SER is connected to PB0)
-    
+    cbi PORTB, SERL ; Clear SER pin (assuming SER is connected to PB0)
     rjmp end
 
 set_ser_in_1:
-    ; put code here to set SER to 1
-    sbi PORTB, 0 ; Set SER pin (assuming SER is connected to PB0)
+    sbi PORTB, SERL ; Set SER pin (assuming SER is connected to PB0)
 
 end:
-    ; put code here to generate SRCLK pulse
-    sbi PORTB, 2 ; Set SRCLK pin (assuming SRCLK is connected to PB2)
-    cbi PORTB, 2 ; Clear SRCLK pin (assuming SRCLK is connected to PB2)
+    ; generate SRCLK pulse
+    sbi PORTB, SRCLK ; Set SRCLK pin (assuming SRCLK is connected to PB2)
+    cbi PORTB, SRCLK ; Clear SRCLK pin (assuming SRCLK is connected to PB2)
     
     dec R17 ; decrement bit counter
     brne loop ; branch to loop if R17 is not zero
 
-	; put code here to generate RCLK pulse (triggers right shift)
-    sbi PORTB, 1 ; Set RCLK pin (assuming RCLK is connected to PB1)
-    cbi PORTB, 1 ; Clear RCLK pin (assuming RCLK is connected to PB1)
+	; generate RCLK pulse (triggers right shift)
+    sbi PORTB, RCLK ; Set RCLK pin (assuming RCLK is connected to PB1)
+    cbi PORTB, RCLK ; Clear RCLK pin (assuming RCLK is connected to PB1)
     
     ; restore registers from stack
     pop R17
@@ -78,19 +77,18 @@ end:
 ; Implement input function to read user input
 input:
     ; Check if button is pressed (active low)
-    sbic PINB, 3 ; skip if bit clear (pressed)
+    sbic PINB, BTN ; skip if bit clear (pressed)
     ret ; return to main loop if button is not pressed
 
-    ; Debounce delay
-    rcall delay_5ms
+    rcall delay_5ms ; Debounce delay
 
     ; Check if button is still pressed after debounce delay
-    sbic PINB, 3
+    sbic PINB, BTN
     ret ; returns if button is not pressed (false trigger)
 
     ; Clear hold time counter
-    clr r20
-    clr r21
+    clr r24
+    clr r25
 
     rcall wait_release ; Wait for button release and count hold time
     rcall check_hold_time ; Check if the button is held down for 1 or 2 seconds and update index accordingly
@@ -98,7 +96,7 @@ input:
 
 ; Wait for button release (active low)
 wait_release:
-    sbis PINB, 3 ; skip if button is released (not pressed)
+    sbis PINB, BTN ; skip if button is released (not pressed)
     rjmp button_held ; if button is still pressed, jump to button_held to continue counting hold time
     
     rcall delay_5ms ; release debounce
@@ -106,12 +104,8 @@ wait_release:
 
 ; If the button is held down, increment the hold time counter until the button is released
 button_held:
-    rcall delay_5ms     ; time base = 5 ms
-
-    ; increment 16-bit counter
-    inc r20
-    brne no_carry
-    inc r21
+    rcall delay_5ms ; increment every 5ms
+    ADIW R24,1 ; Increment the 16-bit counter in R25:R24
 
 no_carry:
     rjmp wait_release
@@ -119,27 +113,27 @@ no_carry:
 ; delay function for approximately 5 milliseconds (assuming 16 MHz clock)
 delay_5ms:
     ; save registers that will be used in this function
-    push R20
-    push R21
+    push R24
+    push R25
 
-    ldi r20, 60
+    ldi r24, 60
 d1:
-    ldi r21, 200
+    ldi r25, 200
 d2:
-    dec r21
+    dec r25
     brne d2
-    dec r20
+    dec r24
     brne d1
 
     ; restore registers before returning
-    pop R21
-    pop R20
+    pop R25
+    pop R24
     ret
 
 load_char:
-	; Save contents of Z pointer
-	push R30
-	push R31
+    ; Reset Z pointer to the start of the lookup table
+	ldi ZH, high(seg_hex_table<<1)
+    ldi ZL, low(seg_hex_table<<1)
 
 	add ZL, R18 ; Add R18 index to the Z pointer
 	clr R0 ; make sure that R0 is zero
@@ -147,65 +141,51 @@ load_char:
 
 	lpm R16, Z ; Load char value into R16
 
-    or R16, R24 ; XOR with mode to toggle between increment and decrement character sets if needed
+    or R16, R20 ; XOR with mode to toggle between increment and decrement character sets if needed
 
-	; restore contents of Z pointer to lookup table
-	pop r31
-    pop r30
     ret 
 
 ; Increment or decrement depending on mode
 short_press:
-    sbrs R24, 7          ; Skip next instruction if bit7 SET (mode=1)
-    rjmp do_increment    ; bit0 clear → increment
-
-; decrement
-do_decrement:
-    tst R18 ; Test if R18 is zero
-    brne dec_ok
-    ldi R18, 15 ; wrap around to 15 if decrementing from 0
-    rjmp done
-
-dec_ok:
-    dec R18
-    rjmp done
+    sbrc R20,7 ; Check mode bit (bit 7 of R20)
+    rjmp dec_mode ; if mode bit is set, jump to decrement mode
 
 ; increment
-do_increment:
     inc R18
-    cpi R18, 16
-    brlo done
-    clr R18
+    andi R18, 0x0F ; wrap 0–>15 automatically
+    ret
 
-done:
+dec_mode:
+    dec R18
+    andi R18, 0x0F ; wrap 15->0 automatically
     ret
 
 medium_press:
     ; Toggle mode between increment and decrement
     ldi R17, 0x80 ; Load 1 into R17 for toggling (bit 7)
-    eor R24, R17 ; Toggle the mode bit in R24 (0 for increment, 1 for decrement)
+    eor R20, R17 ; Toggle the mode bit in R20 (0 for increment, 1 for decrement)
     ret ; return to main loop after handling medium press
 
 check_hold_time:
     ; store registers that will be used in this function
+    push R25
+    push R24
     push R23
     push R22
-    push R21
-    push R20
 
     ; Check if button is held for less than 1 second
     ldi R22, low(ONE_SECOND)  ; Load low byte of ONE_SECOND into R22
     ldi R23, high(ONE_SECOND) ; Load high byte of ONE_SECOND into R23
 
-    cp R20, R22 ; Compare low byte of counter to low byte of ONE_SECOND
-    cpc R21, R23 ; Compare high byte of counter to high byte of ONE_SECOND
+    cp R24, R22 ; Compare low byte of counter to low byte of ONE_SECOND
+    cpc R25, R23 ; Compare high byte of counter to high byte of ONE_SECOND
     brlo short_case ; If counter is less than ONE_SECOND, it's a short press
 
     ; Check if button is held for 1 second or more but less than 2 seconds
     ldi R22, low(TWO_SECONDS)  ; Load low byte of TWO_SECONDS into R22
     ldi R23, high(TWO_SECONDS) ; Load high byte of TWO_SECONDS into R23
-    cp R20, R22 ; Compare low byte of counter to low byte of TWO_SECONDS
-    cpc R21, R23 ; Compare high byte of counter to high byte of TWO_SECONDS
+    cp R24, R22 ; Compare low byte of counter to low byte of TWO_SECONDS
+    cpc R25, R23 ; Compare high byte of counter to high byte of TWO_SECONDS
     brlo medium_case ; If counter is less than TWO_SECONDS, it's a medium press
 
 long_press:
@@ -222,19 +202,15 @@ medium_case:
 
     ; restore registers before returning to main loop
 exit_check:
-    pop R20
-    pop R21
     pop R22
     pop R23
+    pop R24
+    pop R25
     ret
 
 main:
     rcall input ; Call the input function to get user input
-
 	rcall load_char ; Load char value from lookup table at R18 into R16 to send to display
-
-    ; ori R16, 0x80 ; enable decimal point
-
     rcall display ; Call the display function to show the character
     rjmp main ; jump to main loop
 
