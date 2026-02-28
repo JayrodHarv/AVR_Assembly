@@ -2,6 +2,8 @@
 .cseg
 .org 0
 
+#define SOFTWARE_DEBOUNCE
+
 ; Constants
 .equ SERL = 0 ; Assuming SER is connected to PB0
 .equ RCLK = 1 ; Assuming RCLK is connected to PB1
@@ -16,7 +18,9 @@ sbi DDRB, RCLK ; Set PB1 to output (Right Shift Clock)
 sbi DDRB, SRCLK ; Set PB2 to output (Shift Register Clock)
 
 cbi DDRB, BTN ; Set PB3 to input (Button)
-sbi PORTB, BTN ; enable internal pull-up resistor
+#ifdef SOFTWARE_DEBOUNCE
+	sbi PORTB, BTN ; enable internal pull-up resistor
+#endif
 
 ; R25:R24 -> 16-bit counter for waiting for button release
 ; R20 -> mode (increment/decrement)
@@ -80,11 +84,13 @@ input:
     sbic PINB, BTN ; skip if bit clear (pressed)
     ret ; return to main loop if button is not pressed
 
-    rcall delay_5ms ; Debounce delay
+	#ifdef SOFTWARE_DEBOUNCE
+		rcall delay_5ms ; Debounce delay
 
-    ; Check if button is still pressed after debounce delay
-    sbic PINB, BTN
-    ret ; returns if button is not pressed (false trigger)
+		; Check if button is still pressed after debounce delay
+		sbic PINB, BTN
+		ret ; returns if button is not pressed (false trigger)
+	#endif
 
     ; Clear hold time counter
     clr r24
