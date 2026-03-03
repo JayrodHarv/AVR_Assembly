@@ -1,4 +1,9 @@
 .include "m328Pdef.inc"
+
+.dseg
+.org 0x60 ; Start of data segment for variables
+seg_hex_table: byte 16 ; Lookup table for 7-segment display characters (0-9, A-F)
+
 .cseg
 .org 0
 
@@ -25,14 +30,6 @@ sbi PORTB, BTN ; enable internal pull-up resistor
 ; R16 -> Character value to send to display subroutine
 ; R17 -> General use register
 ; R0 -> Contents are always zero
-
-; Lookup table for 7-segment display characters (0-9, A-F)
-seg_hex_table:
-	; DP most significant -> A least significant
-    ;   0    1    2    3    4    5    6    7
-    .db 0x3F,0x06,0x5B,0x4F,0x66,0x6D,0x7D,0x07
-    ;   8    9    A    B    C    D    E    F
-    .db 0x7F,0x6F,0x77,0x7C,0x39,0x5E,0x79,0x71
 
 rjmp start ; jump to the start label
 
@@ -131,15 +128,15 @@ d2:
     ret
 
 load_char:
-    ; Reset Z pointer to the start of the lookup table
-	ldi ZH, high(seg_hex_table<<1)
-    ldi ZL, low(seg_hex_table<<1)
+    ; Reset X pointer to the start of the lookup table
+	ldi XL, low(seg_hex_table)
+    ldi XH, high(seg_hex_table)
 
-	add ZL, R18 ; Add R18 index to the Z pointer
+	add XL, R18 ; Add R18 index to the X pointer
 	clr R0 ; make sure that R0 is zero
-	adc ZH, R0 ; Handle 16-bit carry
+	adc XH, R0 ; Handle 16-bit carry
 
-	lpm R16, Z ; Load char value into R16
+	lds R16, X ; Load char value into R16
 
     or R16, R20 ; XOR with mode to toggle between increment and decrement character sets if needed
 
@@ -223,12 +220,65 @@ start:
 	ldi r16, low(RAMEND)
 	out SPL, r16
 
+    ; Initialize lookup table
+    ; X -> seg_hex_table in SRAM
+    ldi XL, low(seg_hex_table)
+    ldi XH, high(seg_hex_table)
+
+    ; Now store values one-by-one
+
+    ldi r16, 0b00111111 ; 0
+    st  X+, r16
+
+    ldi r16, 0b00000110 ; 1
+    st  X+, r16
+
+    ldi r16, 0b01011011 ; 2
+    st  X+, r16
+
+    ldi r16, 0b01001111 ; 3
+    st  X+, r16
+
+    ldi r16, 0b01100110 ; 4
+    st  X+, r16
+
+    ldi r16, 0b01101101 ; 5
+    st  X+, r16
+
+    ldi r16, 0b01111101 ; 6
+    st  X+, r16
+
+    ldi r16, 0b00000111 ; 7
+    st  X+, r16
+
+    ldi r16, 0b01111111 ; 8
+    st  X+, r16
+
+    ldi r16, 0b01101111 ; 9
+    st  X+, r16
+
+    ldi r16, 0b01110111 ; A
+    st  X+, r16
+
+    ldi r16, 0b01111100 ; B
+    st  X+, r16
+
+    ldi r16, 0b00111001 ; C
+    st  X+, r16
+
+    ldi r16, 0b01011110 ; D
+    st  X+, r16
+
+    ldi r16, 0b01111001 ; E
+    st  X+, r16
+
+    ldi r16, 0b01110001 ; F
+    st  X+, r16
+
     ; Initialize registers and ports here
-    ldi ZH, high(seg_hex_table<<1)
-	ldi ZL, low(seg_hex_table<<1)
     ldi R16, 0 ; Initially, load index for character '0'
-    add ZL, R16 ; Move to the correct position in the table
-    lpm R16, Z ; Load the character pattern into R16
+    add XL, R16 ; Move to the correct position in the table
+    lds R16, X ; Load the character pattern into R16
 
     rjmp main ; jump to main loop
 
