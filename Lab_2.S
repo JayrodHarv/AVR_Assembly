@@ -1,8 +1,8 @@
 .include "m328Pdef.inc"
 
 .dseg
-.org 0x60 ; Start of data segment for variables
-seg_hex_table: byte 16 ; Lookup table for 7-segment display characters (0-9, A-F)
+.org 0x100 ; Start of data segment for variables
+seg_hex_table: .byte 16 ; Lookup table for 7-segment display characters (0-9, A-F)
 
 .cseg
 .org 0
@@ -142,7 +142,7 @@ load_char:
 	clr R0 ; make sure that R0 is zero
 	adc XH, R0 ; Handle 16-bit carry
 
-	lds R16, X ; Load char value into R16
+	ld R16, X ; Load char value into R16
 
     or R16, R20 ; XOR with mode to toggle between increment and decrement character sets if needed
 
@@ -284,7 +284,7 @@ start:
     ; Initialize registers and ports here
     ldi R16, 0 ; Initially, load index for character '0'
     add XL, R16 ; Move to the correct position in the table
-    lds R16, X ; Load the character pattern into R16
+    ld R16, X ; Load the character pattern into R16
 
     rjmp main ; jump to main loop
 
