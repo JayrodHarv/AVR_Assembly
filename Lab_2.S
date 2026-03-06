@@ -48,7 +48,7 @@ display:
     ldi R17, 8 ; send 8 bits serially to shift register
 
 loop:
-    ror R16 ; rotate right through Carry (Least Significant Bit goes into Carry)
+    rol R16 ; rotate left through Carry (Least Significant Bit goes into Carry)
     BRCS set_ser_in_1 ; branch if Carry is set
     cbi PORTB, SERL ; Clear SER pin (assuming SER is connected to PB0)
     rjmp end
