@@ -162,6 +162,7 @@ load_char:
 ; Increment or decrement depending on mode
 short_press:
 	push r16
+    push r20
     ld r20, X
 	st Y+, r20
 	inc num_inputs
@@ -171,6 +172,7 @@ short_press:
 	cp num_inputs, r16
 	clr r18
 	;brge eval
+    pop r20
 	pop r16
     ret
 
