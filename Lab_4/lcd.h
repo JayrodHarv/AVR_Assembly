@@ -5,14 +5,14 @@
 #include <util/delay.h>
 
 // Control pins on PORTD
-#define LCD_RS_PIN  PD2
+#define LCD_RS_PIN  PD6
 #define LCD_E_PIN   PD3
 
-// Data pins DB4–DB7 on PORTB
+// LCD data pins on PORTB
 #define LCD_D4_PIN  PB0
-#define LCD_D5_PIN  PB1
-#define LCD_D6_PIN  PB2
-#define LCD_D7_PIN  PB3
+#define LCD_D5_PIN  PB2
+#define LCD_D6_PIN  PB3
+#define LCD_D7_PIN  PB4
 
 #define LCD_RS_PORT PORTD
 #define LCD_E_PORT  PORTD

@@ -6,22 +6,26 @@
 
 #include "lcd.h"
 #include "encoder.h"
+#include "fan.h"
+
+#define RPM_UPDATE_INTERVAL_MS 500
 
 int main(void) {
     lcd_init();
     encoder_init();
+    fan_init();
 
     int8_t value   = 1;
     int8_t MIN_VAL = 1;
     int8_t MAX_VAL = 12;
 
-    // Static label on line 1
-    lcd_set_cursor(0, 0);
-    lcd_print("Value:");
+    uint16_t elapsed_ms = 0;
 
-    // Initial value on line 2
+    lcd_set_cursor(0, 0);
+    lcd_print("Duty:   25%");
+
     lcd_set_cursor(1, 0);
-    lcd_print(" 1");
+    lcd_print("RPM:      0");
 
     while (1) {
         int8_t direction = encoder_read();
@@ -33,16 +37,24 @@ int main(void) {
             if (value < MIN_VAL) value = MIN_VAL;
             if (value > MAX_VAL) value = MAX_VAL;
 
-            // Print value padded to 2 chars wide to cleanly
-            // overwrite previous value without screen flicker
-            char buf[3];
-            snprintf(buf, sizeof(buf), "%2d", value);
-            lcd_set_cursor(1, 0);
-            lcd_print(buf);
+            fan_set_speed(value);
+
+            char duty_buf[5];
+            snprintf(duty_buf, sizeof(duty_buf), "%3d%%", fan_get_duty_pct());
+            lcd_set_cursor(0, 7);
+            lcd_print(duty_buf);
         }
 
-        // Small polling delay — the hardware caps and resistors handle
-        // most of the debounce, so we only need a light delay here
         _delay_ms(1);
+        elapsed_ms++;
+
+        if (elapsed_ms >= RPM_UPDATE_INTERVAL_MS) {
+            elapsed_ms = 0;
+
+            char rpm_buf[6];
+            snprintf(rpm_buf, sizeof(rpm_buf), "%5u", fan_get_rpm());
+            lcd_set_cursor(1, 5);
+            lcd_print(rpm_buf);
+        }
     }
 }
