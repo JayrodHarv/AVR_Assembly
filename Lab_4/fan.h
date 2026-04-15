@@ -31,7 +31,7 @@
 // ── Speed range mapping ───────────────────────────────────────────────────────
 // Encoder value 1–12 maps to duty cycle 25%–100%
 // Below 25% the fan cannot reliably start from rest (datasheet minimum)
-#define FAN_DUTY_MIN_PCT  25
+#define FAN_DUTY_MIN_PCT  1
 #define FAN_DUTY_MAX_PCT  100
 
 // ICR0 top value for 80kHz
@@ -41,8 +41,10 @@
 #define FAN_PULSES_PER_REV 4
 
 void fan_init(void);
-void fan_set_duty(uint8_t encoder_value);  // accepts 1–12
+void fan_set_duty(uint8_t duty_pct);
 uint8_t  fan_get_duty_pct(void);
 uint16_t fan_get_rpm(void);
+void fan_toggle(void);
+uint8_t fan_is_on(void);
 
 #endif

@@ -4,21 +4,21 @@
 #include <avr/io.h>
 #include <util/delay.h>
 
-// Control pins on PORTD
-#define LCD_RS_PIN  PD6
-#define LCD_E_PIN   PD3
+// Control pins on PORTB
+#define LCD_RS_PIN  PB4
+#define LCD_E_PIN   PB5
 
 // LCD data pins on PORTB
 #define LCD_D4_PIN  PB0
-#define LCD_D5_PIN  PB2
-#define LCD_D6_PIN  PB3
-#define LCD_D7_PIN  PB4
+#define LCD_D5_PIN  PB1
+#define LCD_D6_PIN  PB2
+#define LCD_D7_PIN  PB3
 
-#define LCD_RS_PORT PORTD
-#define LCD_E_PORT  PORTD
+#define LCD_RS_PORT PORTB
+#define LCD_E_PORT  PORTB
 #define LCD_DATA_PORT PORTB
 #define LCD_DATA_DDR  DDRB
-#define LCD_CTRL_DDR  DDRD
+#define LCD_CTRL_DDR  DDRB
 
 // HD44780 instruction codes (from Table 6 in datasheet)
 #define LCD_CLEAR_DISPLAY   0x01

@@ -66,6 +66,7 @@ $(TARGET).elf: $(OBJS)
 #   $@         : the target (the .hex file)
 $(TARGET).hex: $(TARGET).elf
 	avr-objcopy -O ihex -R .eeprom $< $@
+	rm -f $(OBJS) $(TARGET).elf
 
 # Flashes the .hex file onto the chip via avrdude.
 # Depends on $(TARGET).hex so it will rebuild first if source has changed.

@@ -6,6 +6,8 @@
 static volatile uint16_t _pulse_count = 0;  // pulses counted by ISR
 static uint8_t _duty_pct = FAN_DUTY_MIN_PCT; // current duty cycle
 
+static uint8_t _fan_on = 1;
+
 // ── Tachometer interrupt service routine ─────────────────────────────────────
 // Fires on every falling edge of the FG (blue wire) signal.
 // Open-collector output idles HIGH via pull-up and pulls LOW each pulse,
@@ -82,4 +84,17 @@ uint16_t fan_get_rpm(void) {
     // Scale count from 500ms window to RPM
     // Multiply first to preserve precision before dividing
     return ((uint32_t)count * 120) / FAN_PULSES_PER_REV;
+}
+
+void fan_toggle(void) {
+    _fan_on = !_fan_on;
+    if (_fan_on) {
+        fan_set_duty(_duty_pct);    // restore previous duty cycle
+    } else {
+        OCR0B = 0;                  // zero PWM without touching _duty_pct
+    }
+}
+
+uint8_t fan_is_on(void) {
+    return _fan_on;
 }

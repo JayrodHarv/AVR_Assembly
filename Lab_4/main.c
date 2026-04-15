@@ -7,6 +7,7 @@
 #include "lcd.h"
 #include "encoder.h"
 #include "fan.h"
+#include "button.h"
 
 #define RPM_UPDATE_INTERVAL_MS 500
 
@@ -14,6 +15,7 @@ int main(void) {
     lcd_init();
     encoder_init();
     fan_init();
+    button_init();
 
     int8_t value = 25;
     int8_t MIN_VAL = 1;
@@ -22,15 +24,23 @@ int main(void) {
     uint16_t elapsed_ms = 0;
 
     lcd_set_cursor(0, 0);
-    lcd_print("Duty:   25%");
+    lcd_print("DC: 25% ON");
 
     lcd_set_cursor(1, 0);
-    lcd_print("RPM:      0");
+    lcd_print("RPM:   0");
 
     while (1) {
+
+        if (button_take_press()) {
+            fan_toggle();
+
+            lcd_set_cursor(0, 8);
+            lcd_print(fan_is_on() ? "ON " : "OFF");
+        }
+
         int8_t direction = encoder_read();
 
-        if (direction != 0) {
+        if (direction != 0 && fan_is_on()) {
             value += direction;
 
             if (value < MIN_VAL) value = MIN_VAL;
@@ -40,7 +50,7 @@ int main(void) {
 
             char duty_buf[5];
             snprintf(duty_buf, sizeof(duty_buf), "%3d%%", fan_get_duty_pct());
-            lcd_set_cursor(0, 7);
+            lcd_set_cursor(0, 3);
             lcd_print(duty_buf);
         }
 
