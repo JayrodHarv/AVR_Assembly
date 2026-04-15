@@ -16,12 +16,12 @@
 //   Yellow → Arduino D9 (PWM output, OC1A)
 //   Blue   → unconnected (tachometer, unused here)
 
-// ── PWM pin: OC1A = PB1 = Arduino D9 ─────────────────────────────────────────
-// We use Timer1 in Fast PWM mode at 25kHz
-// At F_CPU = 16MHz: prescaler=1, TOP = ICR1 = 639
-//   f_PWM = 16,000,000 / (1 * (639+1)) = 25,000 Hz exactly
-#define FAN_PWM_PIN  PB1
-#define FAN_PWM_DDR  DDRB
+// ── PWM pin: OC0B = PD5 = Arduino D5 ─────────────────────────────────────────
+// Timer0 Fast PWM at 80kHz
+// At F_CPU = 16MHz: prescaler=1, TOP = OCR0A = 199
+//   f_PWM = 16,000,000 / (1 * (199+1)) = 80,000 Hz exactly
+#define FAN_PWM_PIN  PD5
+#define FAN_PWM_DDR  DDRD
 
 // Tachometer pin
 #define FAN_TACHO_PIN  PD2
@@ -34,14 +34,14 @@
 #define FAN_DUTY_MIN_PCT  25
 #define FAN_DUTY_MAX_PCT  100
 
-// ICR1 TOP value for 25kHz at 16MHz with prescaler=1
-#define FAN_PWM_TOP  639
+// ICR0 top value for 80kHz
+#define FAN_PWM_TOP  199
 
 // 4 poles = 4 FG pulses per revolution
 #define FAN_PULSES_PER_REV 4
 
 void fan_init(void);
-void fan_set_speed(uint8_t encoder_value);  // accepts 1–12
+void fan_set_duty(uint8_t encoder_value);  // accepts 1–12
 uint8_t  fan_get_duty_pct(void);
 uint16_t fan_get_rpm(void);
 

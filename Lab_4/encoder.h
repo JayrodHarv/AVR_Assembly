@@ -13,7 +13,7 @@
 
 // ── Encoder pins (PORTD) ──────────────────────────────────────────────────────
 #define ENC_A_PIN  PD4   // Signal A (CLK)
-#define ENC_B_PIN  PD5   // Signal B (DT)
+#define ENC_B_PIN  PD7   // Signal B (DT)
 #define ENC_PORT   PORTD
 #define ENC_PIN    PIND  // PIND is used to READ pin states on PORTD
 #define ENC_DDR    DDRD

@@ -15,9 +15,9 @@ int main(void) {
     encoder_init();
     fan_init();
 
-    int8_t value   = 1;
+    int8_t value = 25;
     int8_t MIN_VAL = 1;
-    int8_t MAX_VAL = 12;
+    int8_t MAX_VAL = 100;
 
     uint16_t elapsed_ms = 0;
 
@@ -33,11 +33,10 @@ int main(void) {
         if (direction != 0) {
             value += direction;
 
-            // Clamp between 1 and 12
             if (value < MIN_VAL) value = MIN_VAL;
             if (value > MAX_VAL) value = MAX_VAL;
 
-            fan_set_speed(value);
+            fan_set_duty(value);
 
             char duty_buf[5];
             snprintf(duty_buf, sizeof(duty_buf), "%3d%%", fan_get_duty_pct());

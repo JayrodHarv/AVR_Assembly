@@ -15,12 +15,19 @@ ISR(INT0_vect) {
 }
 
 void fan_init(void) {
-    // ── PWM setup (Timer1, Fast PWM, 25kHz) ──────────────────────────────
+    // ── PWM setup (Timer0, Fast PWM, 80kHz) ──────────────────────────────
     FAN_PWM_DDR |= (1 << FAN_PWM_PIN);
 
-    ICR1   = FAN_PWM_TOP;
-    TCCR1A = (1 << COM1A1) | (1 << WGM11);
-    TCCR1B = (1 << WGM13)  | (1 << WGM12) | (1 << CS10);
+    // Set OCR0A as TOP for custom frequency (Mode 7: Fast PWM, WGM = 0b111)
+    OCR0A = FAN_PWM_TOP;
+
+    // COM0B1=1: non-inverting output on OC0B
+    // WGM01=1, WGM00=1: Fast PWM (bottom two bits of WGM)
+    TCCR0A = (1 << COM0B1) | (1 << WGM01) | (1 << WGM00);
+
+    // WGM02=1: top bit of WGM, selects OCR0A as TOP
+    // CS00=1: prescaler = 1 (no prescaling)
+    TCCR0B = (1 << WGM02) | (1 << CS00);
 
     // ── Tachometer setup (INT0 on D2) ────────────────────────────────────
     // Set D2 as input
@@ -39,15 +46,16 @@ void fan_init(void) {
     // Enable global interrupts
     sei();
 
-    fan_set_speed(1);
+    fan_set_duty(25);
 }
 
-void fan_set_speed(uint8_t encoder_value) {
-    _duty_pct = FAN_DUTY_MIN_PCT +
-                ((uint16_t)(encoder_value - 1) *
-                (FAN_DUTY_MAX_PCT - FAN_DUTY_MIN_PCT)) / 11;
+void fan_set_duty(uint8_t duty_pct) {
+    // Clamp to valid range just in case
+    if (duty_pct < 1)   duty_pct = 1;
+    if (duty_pct > 100) duty_pct = 100;
 
-    OCR1A = ((uint32_t)_duty_pct * FAN_PWM_TOP) / 100;
+    _duty_pct = duty_pct;
+    OCR0B = ((uint16_t)_duty_pct * FAN_PWM_TOP) / 100;
 }
 
 uint8_t fan_get_duty_pct(void) {

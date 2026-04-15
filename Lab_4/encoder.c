@@ -2,12 +2,12 @@
 
 void encoder_init(void) {
     // Set A and B as inputs
-    // ENC_DDR &= ~((1 << ENC_A_PIN) | (1 << ENC_B_PIN));
+    ENC_DDR &= ~((1 << ENC_A_PIN) | (1 << ENC_B_PIN));
 
     // Enable internal pull-ups as a backup to the external 10kΩ resistors.
     // The external resistors recommended by the datasheet are the primary
     // pull-ups — these just add a safety net.
-    // ENC_PORT |= (1 << ENC_A_PIN) | (1 << ENC_B_PIN);
+    ENC_PORT |= (1 << ENC_A_PIN) | (1 << ENC_B_PIN);
 }
 
 int8_t encoder_read(void) {
