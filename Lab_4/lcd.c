@@ -1,7 +1,5 @@
 #include "lcd.h"
 
-// ─── Low-level helpers ────────────────────────────────────────────────────────
-
 static void lcd_pulse_enable(void) {
     // The E pin must be pulsed high then low to latch data.
     // Datasheet specifies PWEH (enable pulse width) >= 450ns at 3V,
@@ -37,17 +35,15 @@ static void lcd_send_byte(uint8_t byte, uint8_t is_data) {
     lcd_write_nibble(byte & 0xF0);        // High nibble
     lcd_write_nibble((byte << 4) & 0xF0); // Low nibble
 
-    // Most instructions take 37µs to execute; CLEAR and HOME take up to 1.52ms.
-    // We use a safe 50µs delay here and handle the slow commands separately.
+    // Most instructions take 37us to execute; CLEAR and HOME take up to 1.52ms.
+    // We use a safe 50us delay here and handle the slow commands separately.
     _delay_us(50);
 }
-
-// ─── Public API ───────────────────────────────────────────────────────────────
 
 void lcd_send_command(uint8_t cmd) {
     lcd_send_byte(cmd, 0);
 
-    // Clear display and Return home are slow — datasheet says up to 1.52ms
+    // Clear display and Return home are slow, datasheet says up to 1.52ms
     if (cmd == LCD_CLEAR_DISPLAY || cmd == LCD_RETURN_HOME)
         _delay_ms(2);
 }
@@ -84,7 +80,7 @@ void lcd_init(void) {
     LCD_DATA_PORT &= ~((1 << LCD_D4_PIN) | (1 << LCD_D5_PIN) |
                        (1 << LCD_D6_PIN) | (1 << LCD_D7_PIN));
 
-    // ── Initialization sequence (Figure 24 in datasheet) ──────────────────
+    // Initialization sequence (Figure 24 in datasheet)
     // Wait > 40ms after VCC rises to 2.7V before sending any commands.
     _delay_ms(50);
 
@@ -97,7 +93,7 @@ void lcd_init(void) {
     _delay_ms(5);    // Wait > 4.1ms (datasheet requirement)
 
     lcd_write_nibble(0x30);
-    _delay_us(150);  // Wait > 100µs
+    _delay_us(150);  // Wait > 100us
 
     lcd_write_nibble(0x30);
     _delay_us(50);
@@ -106,7 +102,7 @@ void lcd_init(void) {
     lcd_write_nibble(0x20);
     _delay_us(50);
 
-    // ── From here we can send full bytes as two nibbles ────────────────────
+    // From here we can send full bytes as two nibbles
 
     // Function Set: 4-bit, 2 lines, 5×8 dots  (N=1, F=0, DL=0)
     lcd_send_command(LCD_FUNCTION_SET_4BIT);

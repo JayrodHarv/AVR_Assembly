@@ -4,16 +4,17 @@
 #include <avr/io.h>
 #include <util/delay.h>
 
-// Control pins on PORTB
+// Control pins
 #define LCD_RS_PIN  PB4
 #define LCD_E_PIN   PB5
 
-// LCD data pins on PORTB
+// Data pins
 #define LCD_D4_PIN  PB0
 #define LCD_D5_PIN  PB1
 #define LCD_D6_PIN  PB2
 #define LCD_D7_PIN  PB3
 
+// Port and DDR definitions
 #define LCD_RS_PORT PORTB
 #define LCD_E_PORT  PORTB
 #define LCD_DATA_PORT PORTB
