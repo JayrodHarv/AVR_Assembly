@@ -1,4 +1,4 @@
-#include "HX916.h"
+#include "coin_acceptor.h"
 #include <avr/interrupt.h>
 #include <util/delay.h>
 
@@ -55,7 +55,7 @@ ISR(INT0_vect) {
 // -------------------------------------------------------
 // coin_pulse_init()
 // -------------------------------------------------------
-void hx916_init(void) {
+void coin_acceptor_init(void) {
 
     // --- INT0 (PD2, Pin 2) — HX-916 coin pulse input ---
     DDRD  &= ~(1 << DDD2);     // PD2 as input
@@ -79,9 +79,9 @@ void hx916_init(void) {
 }
 
 // -------------------------------------------------------
-// hx916_get_balance()
+// coin_get_balance()
 // -------------------------------------------------------
-uint32_t hx916_get_balance(void) {
+uint32_t coin_get_balance(void) {
     // balance_cents is uint32_t — not atomic on 8-bit AVR.
     // Disable interrupts briefly to read all 4 bytes consistently.
     uint32_t val;
@@ -105,7 +105,7 @@ uint32_t hx916_get_balance(void) {
 // -------------------------------------------------------
 // coin_spend()
 // -------------------------------------------------------
-uint8_t hx916_spend(void) {
+uint8_t coin_spend(void) {
     cli();
     if (balance_cents > 0) {
         balance_cents = 0; // Spend full balance

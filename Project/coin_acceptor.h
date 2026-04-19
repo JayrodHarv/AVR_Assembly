@@ -1,5 +1,5 @@
-#ifndef HX916_H
-#define HX916_H
+#ifndef coin_acceptor_H
+#define coin_acceptor_H
 
 #include <avr/io.h>
 
@@ -46,14 +46,14 @@
  * Timer1 in normal mode for timeout detection.
  * Call once before sei().
  */
-void hx916_init(void);
+void coin_acceptor_init(void);
 
 /**
  * coin_get_balance()
  * Returns the current cent balance.
  * Safe to call from the main loop at any time.
  */
-uint32_t hx916_get_balance(void);
+uint32_t coin_get_balance(void);
 
 /**
  * coin_spend_ready()
@@ -67,6 +67,6 @@ uint32_t hx916_get_balance(void);
  * Deducts SPEND_AMOUNT_CENTS from the balance if funds allow.
  * Returns 1 on success, 0 if balance is insufficient.
  */
-uint8_t hx916_spend(void);
+uint8_t coin_spend(void);
 
 #endif
