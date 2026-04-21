@@ -22,7 +22,7 @@
 // -------------------------------------------------------
 
 // Pin definition
-#define FLOAT_SWITCH_PIN    PD4
+#define FLOAT_SWITCH_PIN    PD3
 #define FLOAT_SWITCH_PORT   PORTD
 #define FLOAT_SWITCH_DDR    DDRD
 #define FLOAT_SWITCH_PIND   PIND

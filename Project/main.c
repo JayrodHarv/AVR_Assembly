@@ -8,19 +8,23 @@
 #include "lcd.h"
 #include "coin_acceptor.h"
 #include "float_switch.h"
+#include "button.h"
+#include "pump.h"
 
-/ -------------------------------------------------------
+// -------------------------------------------------------
 // State machine
 // -------------------------------------------------------
 typedef enum {
-    STATE_IDLE,         // Waiting for coins or button press
-    STATE_TANK_EMPTY,   // Float switch low — block all spending
-    STATE_DISPENSING,   // Pump running
-    STATE_NO_FUNDS      // Button pressed with insufficient balance
+    INITIAL_STATE,      // No coins have been inserted yet, show welcome message
+    COIN_COLLECTING_STATE,
+    DISPENSING_STATE,
+    THANKS_STATE,
+    TANK_EMPTY_STATE,
+    NO_FUNDS_STATE
 } MachineState;
  
 // The one global state variable
-volatile MachineState state = STATE_IDLE;
+volatile MachineState state = INITIAL_STATE;
 
 static void format_dollars(uint32_t cents, char *buf) {
     uint32_t dollars = cents / 100;
@@ -61,29 +65,53 @@ static void lcd_print_padded(const char *str, uint8_t width) {
 // Draw both LCD rows to match the current state
 static void lcd_draw(MachineState s, uint32_t balance) {
     char buf[9];
- 
-    // Row 0 — always shows balance
-    lcd_set_cursor(0, 0);
-    lcd_print("Bal: ");
-    format_dollars(balance, buf);
-    lcd_print_padded(buf, 11);
- 
-    // Row 1 — reflects current state
-    lcd_set_cursor(1, 0);
-    switch (s) {
-        case STATE_IDLE:
-            // lcd_print("Spend ");
-            // format_dollars(SPEND_AMOUNT_CENTS, buf);
-            // lcd_print_padded(buf, 10);
+
+    // Clear the display first
+    lcd_clear();
+
+    switch(s) {
+        case INITIAL_STATE:
+            lcd_set_cursor(0, 0);
+            lcd_print("Welcome!");
+            lcd_set_cursor(1, 0);
+            lcd_print("Insert coins...");
             break;
-        case STATE_TANK_EMPTY:
-            lcd_print_padded("** Tank empty **", 16);
+        
+        case COIN_COLLECTING_STATE:
+            lcd_set_cursor(0, 0);
+            lcd_print("Balance: ");
+            format_dollars(balance, buf);
+            lcd_print(buf);
+            lcd_set_cursor(1, 0);
+            lcd_print("Press button");
             break;
-        case STATE_DISPENSING:
-            lcd_print_padded("  Dispensing... ", 16);
+
+        case DISPENSING_STATE:
+            lcd_set_cursor(0, 0);
+            lcd_print("Dispensing...");
+            lcd_set_cursor(1, 0);
+            lcd_print("Please wait");
             break;
-        case STATE_NO_FUNDS:
-            lcd_print_padded("  No funds!     ", 16);
+
+        case THANKS_STATE:
+            lcd_set_cursor(0, 0);
+            lcd_print("Thank you!");
+            lcd_set_cursor(1, 0);
+            lcd_print("Enjoy your drink");
+            break;
+
+        case TANK_EMPTY_STATE:
+            lcd_set_cursor(0, 0);
+            lcd_print("** Tank empty **");
+            lcd_set_cursor(1, 0);
+            lcd_print("Please refill");
+            break;
+
+        case NO_FUNDS_STATE:
+            lcd_set_cursor(0, 0);
+            lcd_print("** No funds! **");
+            lcd_set_cursor(1, 0);
+            lcd_print("Insert coins...");
             break;
     }
 }
@@ -91,10 +119,13 @@ static void lcd_draw(MachineState s, uint32_t balance) {
 int main(void) {
     lcd_init();
     coin_acceptor_init();
+    float_switch_init();
+    btn_init();
+    pump_init();
     sei(); // Enable global interrupts
 
     // Determine initial state from float switch
-    state = float_switch_has_liquid() ? STATE_IDLE : STATE_TANK_EMPTY;
+    state = float_switch_has_liquid() ? INITIAL_STATE : TANK_EMPTY_STATE;
 
     uint32_t balance = coin_get_balance();
     uint32_t last_balance = 0xFFFFFFFF;         // Force first LCD draw
@@ -111,72 +142,66 @@ int main(void) {
             last_balance = balance;
         }
 
+        // If at any point the float switch indicates no liquid, we must go to TANK_EMPTY_STATE
+        if (!float_switch_has_liquid()) {
+            state = TANK_EMPTY_STATE;
+        } else if (state == TANK_EMPTY_STATE) {
+            // If we were in TANK_EMPTY_STATE but liquid has returned, go back to the appropriate state based on balance
+            if (balance > 0) {
+                state = COIN_COLLECTING_STATE;
+            } else {
+                state = INITIAL_STATE;
+            }
+        }
+
         // --------------------------------------------------
         // State machine
         // --------------------------------------------------
+
         switch (state) {
  
-            case STATE_IDLE:
-            // Waiting for a coin or button press.
-            // Transition to TANK_EMPTY if liquid is lost.
-            // Transition to DISPENSING or NO_FUNDS on button.
-            // ----------------------------------------------
-                if (!float_switch_has_liquid()) {
-                    state = STATE_TANK_EMPTY;
-                    break;
+            case INITIAL_STATE:
+                // No coins yet. If we get any, move to COIN_COLLECTING.
+                if (balance > 0) {
+                    state = COIN_COLLECTING_STATE;
                 }
- 
-                // if (coin_spend_ready()) {
-                //     if (coin_spend()) {
-                //         state = STATE_DISPENSING;
-                //     } else {
-                //         state = STATE_NO_FUNDS;
-                //     }
-                // }
+                else if (btn_pressed()) {
+                    // Button press with no coins — show error message briefly
+                    state = NO_FUNDS_STATE;
+                }
                 break;
  
-            case STATE_TANK_EMPTY:
-            // Blocked — do nothing until liquid returns.
-            // Button presses are silently consumed here so
-            // the spend_ready flag doesn't queue up.
-            // ----------------------------------------------
-                // coin_spend_ready();     // Drain flag — ignore button
- 
-                if (float_switch_has_liquid()) {
-                    state = STATE_IDLE;
+            case COIN_COLLECTING_STATE:
+                // Coins have been inserted. If button pressed, try to spend.
+                // Coin isertions handled by interrupt
+                if (btn_pressed()) {
+                    state = DISPENSING_STATE;
                 }
                 break;
 
-            case STATE_DISPENSING:
-            // Pump is running. Run for the set duration
-            // then return to IDLE. If the tank empties mid-
-            // dispense, stop the pump and go to TANK_EMPTY.
-            // ----------------------------------------------
-                // pump_on();
- 
-                // for (uint16_t ms = 0; ms < 3000; ms++) {
-                //     _delay_ms(1);
- 
-                //     if (!float_switch_has_liquid()) {
-                //         pump_off();
-                //         state = STATE_TANK_EMPTY;
-                //         goto dispense_done;
-                //     }
-                // }
- 
-                // pump_off();
-                // state = STATE_IDLE;
-                // dispense_done:
+            case DISPENSING_STATE:
+                // TODO: Implement actual dispensing logic here (e.g. control a motor or solenoid)
+                // For now we just simulate a delay and then clear the balance.
+                pump_dispense(PUMP_DISPENSE_MS, float_switch_has_liquid);
+                _delay_ms(10000); // Simulate dispensing time
+                coin_spend();    // Clear balance (spend all funds)
+                state = THANKS_STATE; // After dispensing, go to thanks state
                 break;
- 
-            // ----------------------------------------------
-            case STATE_NO_FUNDS:
-            // Show the message briefly, then return to IDLE.
-            // Coins inserted during this delay still count —
-            // the INT0 ISR runs freely in the background.
-            // ----------------------------------------------
-                _delay_ms(1500);
-                state = STATE_IDLE;
+            
+            case THANKS_STATE:
+                // Show thank you message for a few seconds, then return to initial state
+                _delay_ms(5000);
+                state = INITIAL_STATE;
+                break;
+
+            case NO_FUNDS_STATE:
+                // Wait here until the error condition clears (handled above in the main loop)
+                _delay_ms(5000); // Show error message for 5 seconds
+                state = INITIAL_STATE; // After showing error, go back to initial state
+                break;
+            
+            case TANK_EMPTY_STATE:
+                // Wait here until the tank is refilled (handled above in the main loop)
                 break;
         }
 
