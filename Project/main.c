@@ -90,7 +90,9 @@ static void lcd_draw(MachineState s, uint32_t balance) {
             lcd_set_cursor(0, 0);
             lcd_print("Dispensing...");
             lcd_set_cursor(1, 0);
-            lcd_print("Please wait");
+            lcd_print("Balance: ");
+            format_dollars(balance, buf);
+            lcd_print(buf);
             break;
 
         case THANKS_STATE:
@@ -180,12 +182,40 @@ int main(void) {
                 break;
 
             case DISPENSING_STATE:
-                // TODO: Implement actual dispensing logic here (e.g. control a motor or solenoid)
-                // For now we just simulate a delay and then clear the balance.
-                pump_dispense(PUMP_DISPENSE_MS, float_switch_has_liquid);
-                _delay_ms(10000); // Simulate dispensing time
-                coin_spend();    // Clear balance (spend all funds)
-                state = THANKS_STATE; // After dispensing, go to thanks state
+                pump_on();
+ 
+                while (coin_get_balance() > 0) {
+                    uint8_t tank_ok = 1;
+ 
+                    // Wait out one cent's pump time
+                    for (uint32_t ms = 0; ms < PUMP_MS_PER_CENT; ms++) {
+                        _delay_ms(1);
+ 
+                        if (!float_switch_has_liquid()) {
+                            tank_ok = 0;
+                            break;      // Exit inner loop immediately
+                        }
+                    }
+ 
+                    if (!tank_ok) {
+                        // Tank emptied mid-cent — stop pump,
+                        // keep balance (cent not yet decremented)
+                        pump_off();
+                        state = TANK_EMPTY_STATE;
+                        goto dispense_exit;
+                    }
+ 
+                    // Full cent dispensed successfully — consume it
+                    coin_decrement();
+ 
+                    // Redraw LCD with updated balance
+                    lcd_draw(DISPENSING_STATE, coin_get_balance());
+                    last_balance = coin_get_balance();
+                }
+
+                pump_off();
+                state = INITIAL_STATE;
+                dispense_exit:
                 break;
             
             case THANKS_STATE:

@@ -31,28 +31,6 @@ ISR(INT0_vect) {
 }
 
 // -------------------------------------------------------
-// INT1 ISR — fires when spend button is pressed
-// Hardware debounce via external 10kΩ pull-up is recommended.
-// We do a brief software debounce here too just in case.
-// -------------------------------------------------------
-// ISR(INT1_vect) {
-//     // Disable INT1 temporarily to ignore bounce
-//     EIMSK &= ~(1 << INT1);
-
-//     spend_flag = 1;
-
-//     // Small delay to let button settle — safe inside ISR
-//     // because this is the only interrupt doing this
-//     _delay_ms(50);
-
-//     // Clear any spurious INT1 flag that fired during debounce
-//     EIFR |= (1 << INTF1);
-
-//     // Re-enable INT1
-//     EIMSK |= (1 << INT1);
-// }
-
-// -------------------------------------------------------
 // coin_pulse_init()
 // -------------------------------------------------------
 void coin_acceptor_init(void) {
@@ -103,15 +81,11 @@ uint32_t coin_get_balance(void) {
 // }
 
 // -------------------------------------------------------
-// coin_spend()
+// coin_decrement()
 // -------------------------------------------------------
-uint8_t coin_spend(void) {
+void coin_decrement(void) {
     cli();
-    if (balance_cents > 0) {
-        balance_cents = 0; // Spend full balance
-        sei();
-        return 1;   // Success
-    }
+    if (balance_cents > 0)
+        balance_cents--;
     sei();
-    return 0;       // Insufficient funds
 }

@@ -56,17 +56,11 @@ void coin_acceptor_init(void);
 uint32_t coin_get_balance(void);
 
 /**
- * coin_spend_ready()
- * Returns 1 if the spend button was pressed since last checked.
- * Clears the internal flag when called — call only once per loop.
+ * coin_decrement()
+ * Atomically deducts 1 cent from the balance.
+ * Called once per PUMP_MS_PER_CENT during dispensing.
+ * Does nothing if balance is already zero.
  */
-// uint8_t hx916_spend_ready(void);
- 
-/**
- * coin_spend()
- * Deducts SPEND_AMOUNT_CENTS from the balance if funds allow.
- * Returns 1 on success, 0 if balance is insufficient.
- */
-uint8_t coin_spend(void);
+void coin_decrement(void);
 
 #endif
