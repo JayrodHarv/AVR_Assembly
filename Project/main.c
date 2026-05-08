@@ -207,7 +207,7 @@ int main(void) {
                 }
 
                 pump_off();
-                state = INITIAL_STATE;
+                state = THANKS_STATE;
                 dispense_exit:
                 break;
             
