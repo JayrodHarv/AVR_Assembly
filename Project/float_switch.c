@@ -2,14 +2,8 @@
 #include <avr/interrupt.h>
 #include <util/delay.h>
 
-// -------------------------------------------------------
-// Volatile state flag — written by ISR, read by main loop
-// -------------------------------------------------------
 static volatile uint8_t liquid_present = 1;   // Assume full at startup
 
-// -------------------------------------------------------
-// Internal: read the raw pin state and map to liquid present
-// -------------------------------------------------------
 static uint8_t read_pin(void) {
     uint8_t pin = (FLOAT_SWITCH_PIND >> FLOAT_SWITCH_PIN) & 0x01;
 #if FLOAT_SWITCH_ACTIVE_STATE == 0
@@ -19,15 +13,6 @@ static uint8_t read_pin(void) {
 #endif
 }
 
-// -------------------------------------------------------
-// INT1 ISR — fires on any logical change of PD3
-//
-// Debounce strategy: disable INT1, wait 20ms for the reed
-// switch to settle, then take two readings 5ms apart.
-// Only update the flag if both readings agree.
-// Re-enable INT1 and clear any flag that built up during
-// the debounce window before returning.
-// -------------------------------------------------------
 ISR(INT1_vect) {
     EIMSK &= ~(1 << INT1);         // Disable INT1 during debounce
 
@@ -45,9 +30,6 @@ ISR(INT1_vect) {
     EIMSK |= (1 << INT1);          // Re-enable INT1
 }
 
-// -------------------------------------------------------
-// float_switch_init()
-// -------------------------------------------------------
 void float_switch_init(void) {
     FLOAT_SWITCH_DDR  &= ~(1 << FLOAT_SWITCH_PIN);   // PD3 as input
     // FLOAT_SWITCH_PORT |=  (1 << FLOAT_SWITCH_PIN);   // Enable internal pull-up
@@ -62,9 +44,6 @@ void float_switch_init(void) {
     liquid_present = read_pin();
 }
 
-// -------------------------------------------------------
-// float_switch_has_liquid()
-// -------------------------------------------------------
 uint8_t float_switch_has_liquid(void) {
     return liquid_present;          // Just return the ISR-maintained flag
 }

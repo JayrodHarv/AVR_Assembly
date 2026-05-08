@@ -11,9 +11,6 @@
 #include "button.h"
 #include "pump.h"
 
-// -------------------------------------------------------
-// State machine
-// -------------------------------------------------------
 typedef enum {
     INITIAL_STATE,      // No coins have been inserted yet, show welcome message
     COIN_COLLECTING_STATE,
@@ -155,10 +152,6 @@ int main(void) {
                 state = INITIAL_STATE;
             }
         }
-
-        // --------------------------------------------------
-        // State machine
-        // --------------------------------------------------
 
         switch (state) {
  
